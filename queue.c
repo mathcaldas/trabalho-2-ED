@@ -13,7 +13,7 @@ struct queue
 // Define a structure for a node in the linked list.
 struct queue_node
 {
-   int info;      // A float value stored in the node.
+   int info;      // A int value stored in the node.
    QueueNode *next; // A pointer to the next node in the linked list.
 };
 
@@ -31,8 +31,8 @@ int q_is_empty(Queue *q)
    return q->front == NULL;
 }
 
-// Function to enqueue a float value into the queue.
-void q_enqueue(Queue *q, float v)
+// Function to enqueue a int value into the queue.
+void q_enqueue(Queue *q, int v)
 {
    QueueNode *node = (QueueNode *)malloc(sizeof(QueueNode)); // Allocate memory for a new node.
    node->info = v;
@@ -46,12 +46,12 @@ void q_enqueue(Queue *q, float v)
    q->rear = node;
 }
 
-// Function to dequeue and return a float value from the queue.
-float q_dequeue(Queue *q)
+// Function to dequeue and return a int value from the queue.
+int q_dequeue(Queue *q)
 {
    assert(!q_is_empty(q));
 
-   float v = q->front->info;
+   int v = q->front->info;
    QueueNode *p = q->front; // Store for removal
 
    if (q->front != q->rear)
