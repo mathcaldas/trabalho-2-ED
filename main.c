@@ -136,6 +136,7 @@ int main() {
         if (i % 1000 == 0) {
             ex_print(q_exam);
             re_print(q_report);
+            printf("\n");
         }
     }
 
@@ -147,6 +148,8 @@ int main() {
         free(radiologists[i]);
     }
 
+    ex_print(q_exam);
+    re_print(q_report);
     ex_free(q_exam);
     re_free(q_report);
     return 0;
