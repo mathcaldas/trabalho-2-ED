@@ -103,7 +103,7 @@ int main() {
         radiologists[i] = add_radiologist();
     }
 
-    for (int i = 0; i < 43200; i++) {
+    for (int i = 0; i < 40; i++) {
         if (gen_randint(0, 100) <= 20){
             Patient *p = create_patient();
             if (p == NULL)

@@ -1,4 +1,5 @@
 #include "report.h" // Include the header file for the ReQueue data structure
+#include "utils.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
