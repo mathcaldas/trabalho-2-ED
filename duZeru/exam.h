@@ -10,7 +10,7 @@ int exq_is_empty(ExamQueue *q);
 
 void exq_enqueue(ExamQueue *q, int patient_id);
 
-int exq_dequeue(ExamQueue *q)
+int exq_dequeue(ExamQueue *q);
 
 void exq_free(ExamQueue *q);
 

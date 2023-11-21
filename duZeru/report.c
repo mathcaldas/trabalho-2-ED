@@ -54,7 +54,7 @@ void req_enqueue(ReportQueue *r, int patient_id, int initialization){
     
     node->next = NULL;
 
-    if req_is_empty(r)
+    if (req_is_empty(r))
         r->front = node; 
     else 
         r->rear->next = node;
@@ -76,10 +76,15 @@ Exam *req_dequeue(ReportQueue *q) {
     return e;
 }
 
+int req_get_exam_attributes(Exam *e, int *patient_id, int *initialization) {
+    *patient_id = e->patient_id;
+    *initialization = e->initialization;
+}
+
 void req_free(ReportQueue *q) {
-    ReportQueueNode *p = r->front; 
+    ReportQueueNode *p = q->front; 
     while (p != NULL){
-        ReportQueueNode *t = t->next;
+        ReportQueueNode *t = p->next;
         free(p->exam);
         free(p);
         p = t;

@@ -21,6 +21,8 @@ void req_enqueue(ReportQueue *q, int patient_id, int initialization);
 
 Exam *req_dequeue(ReportQueue *q);
 
+int req_get_exam_attributes(Exam *e, int *patient_id, int *initialization);
+
 void req_free(ReportQueue *q);
 
 void req_print(ReportQueue *q);
