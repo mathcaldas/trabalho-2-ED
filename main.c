@@ -1,10 +1,10 @@
+#include "utils.h"
+#include "exam.h"
+#include "report.h"
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#include "utils.h"
-#include "exam.h"
-#include "report.h"
 
 typedef struct {
     int id, age;
@@ -103,7 +103,7 @@ int main() {
         radiologists[i] = add_radiologist();
     }
 
-    for (int i = 0; i < 40; i++) {
+    for (int i = 0; i < 43200; i++) {
         if (gen_randint(0, 100) <= 20){
             Patient *p = create_patient();
             if (p == NULL)
@@ -146,6 +146,9 @@ int main() {
     for (int i = 0; i < 3; i++) {
         free(radiologists[i]);
     }
+
+    ex_print(q_exam);
+    re_print(q_report);
 
     ex_free(q_exam);
     re_free(q_report);
