@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
-
 struct exam_queue {
+    int n;
     ExamQueueNode *front;
     ExamQueueNode *rear;
 };
@@ -20,8 +20,12 @@ ExamQueue *exq_create() {
     return q;
 }
 
+int exq_length(ExamQueue *q) {
+    return q->n;
+}
+
 int exq_is_empty(ExamQueue *q) {
-    return q->front == NULL;
+    return exq_length(q) == 0;
 }
 
 void exq_enqueue(ExamQueue *q, int patient_id) {
@@ -35,9 +39,11 @@ void exq_enqueue(ExamQueue *q, int patient_id) {
     else
         q->rear->next = node;
     q->rear = node;
+
+    q->n++;
 }
 
-int exq_dequeue(ExamQueue *q){
+int exq_dequeue(ExamQueue *q) {
     assert(!exq_is_empty(q));
 
     int v = q->front->patient_id;
@@ -49,6 +55,9 @@ int exq_dequeue(ExamQueue *q){
         q->front = q->rear = NULL;
     
     free(p);
+
+    q->n--;
+
     return v;
 }
 
