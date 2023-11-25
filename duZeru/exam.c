@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
+
 struct exam_queue {
     ExamQueueNode *front;
     ExamQueueNode *rear;
@@ -36,7 +37,7 @@ void exq_enqueue(ExamQueue *q, int patient_id) {
     q->rear = node;
 }
 
-int exq_dequeue(ExamQueue *q) {
+int exq_dequeue(ExamQueue *q){
     assert(!exq_is_empty(q));
 
     int v = q->front->patient_id;

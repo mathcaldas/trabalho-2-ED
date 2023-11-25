@@ -5,7 +5,7 @@ CC = gcc
 CFLAGS = -Wall
 
 # Source files
-SRCS = main.c patient.c exam.c report.c utils.c
+SRCS = main.c exam.c report.c utils.c
 
 # Object files
 OBJS = $(SRCS:.c=.o)
@@ -37,3 +37,4 @@ clean:
 # Link object files to create the executable
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
+	
