@@ -9,8 +9,13 @@
   
   # Execute o script usando make
   make
+
+'''
+  Opcional:
+  Descomente a linha 23 da main.c para gerar diferentes simulações com novos dados e métricas
+''' 
 ```
-## Arquivos do Programa  
+## Arquivos do Programa  :open_file_folder:
 
 ### Patients 
 
