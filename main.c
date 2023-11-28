@@ -19,6 +19,9 @@
 
 
 int main() {
+    // Uncomment to generate different simulation cases
+    // srand(time(NULL));
+
     // Initialize queues, lists, and awaitables
     ExamQueue *q_exam = exq_create();
     ReportQueue *q_report = req_create();
