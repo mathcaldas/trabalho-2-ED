@@ -28,8 +28,10 @@
         
 ##### No caso do report, existem funções para: 🤙
 
-  * Gerenciamento de condições de pacientes 
+  * Gerenciamento de condições de pacientes
+    * OBS: Consideramos HEALTHY como uma condição assim como as outras patologias, para o cálculo das métricas
   * Limpeza de dados após alcançar o limite definido
+    
 
 ### Awaitable
 
@@ -39,7 +41,8 @@
 
 ### Utils
 
-#### Decisões de implementação: 🤓
   * Função para gerar um inteiro aleatório num dado intervalo
     * Utilizado nas funçoes de gerar CPF, Nome e Idade
   * Função para retornar tempo de espera na fila para o laudo
+
+##
