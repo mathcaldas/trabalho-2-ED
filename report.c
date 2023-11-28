@@ -1,42 +1,47 @@
-#include "report.h" // Include the header file for the ReQueue data structure
+#include "report.h"
+#include "utils.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-struct re_queue
-{
-   int n;     // Current number of elements in the queue
-   int n_max; // Maximum capacity of the queue
-   int front; // Index of the front element
-   Report **v;  // Vector to store the queue elements
+// Struct representing the report queue
+struct report_queue{
+    int n;
+    ReportQueueNode *front;
+    ReportQueueNode *rear;
 };
 
-struct report {
-    int patient_id, initilization;
+//Struct representing a node in the report queue
+struct report_queue_node {
+    Exam *exam;
+    ReportQueueNode *next;
+};
+
+// Struct representing an examination
+struct exam {
+    int patient_id, initialization;
     Condition condition;
 };
 
-// Function to create a new dynamic queue
-ReQueue *re_create()
-{
-   ReQueue *q = (ReQueue *)malloc(sizeof(ReQueue)); // Allocate memory for the ReQueue structure
-
-   q->n = 0;                                         // Initialize the number of elements to 0
-   q->n_max = 4;                                     // Allocate initially space for 4 elements
-   q->v = (Report **)malloc(q->n_max * sizeof(Report *)); // Allocate memory for the vector data
-   q->front = 0;
-
-   return q; // Return a pointer to the created dynamic queue
+// Create and Initialize a new report queue
+ReportQueue *req_create(){
+    ReportQueue *q = (ReportQueue *)malloc(sizeof(ReportQueue));
+    q->n = 0;
+    q->front = q->rear = NULL;
+    return q;
 }
 
-// Helper function to reallocate memory for the dynamic vector
-static void reallocate(ReQueue *q)
-{
-   q->n_max *= 2;                                           // Double the capacity
-   q->v = (Report **)realloc(q->v, q->n_max * sizeof(Report *)); // Reallocate memory for the vector data
+//Get the length of the report queue
+int req_length(ReportQueue *q) {
+    return q->n;
 }
 
+// Check if the report queue is empty
+int req_is_empty(ReportQueue *q){
+    return req_length(q) == 0; 
+}
+
+// Generate a random condition for an exam
 static Condition gen_condition () {
     int prob = gen_randint(0, 100);
     if (prob <= 30)
@@ -51,81 +56,88 @@ static Condition gen_condition () {
         return APPENDICITIS;
 }
 
-static Report *re_create_element(int patient_id, int initialization) {
-   Report *v = malloc(sizeof(Report));
-   v->patient_id = patient_id;
-   v->initilization = initialization;
-   v->condition = gen_condition();
-   return v;
+// Enqueue a new exam into the report queue
+void req_enqueue(ReportQueue *q, int patient_id, int initialization){
+    ReportQueueNode *node = (ReportQueueNode *)malloc(sizeof(ReportQueueNode));
+    
+    node->exam = (Exam*)malloc(sizeof(Exam));
+    
+    node->exam->patient_id = patient_id;
+    node->exam->initialization = initialization;
+    node->exam->condition = gen_condition();
+    
+    node->next = NULL;
+
+    if (req_is_empty(q))
+        q->front = node; 
+    else 
+        q->rear->next = node;
+    q->rear = node;
+
+    q->n++;
 }
 
-// Function to enqueue an element into the queue
-void re_enqueue(ReQueue *q, int patient_id, int initialization)
-{
-   Report *v = re_create_element(patient_id, initialization);
+// Dequeue an exam from the report queue
+Exam *req_dequeue(ReportQueue *q) {
+    assert(!req_is_empty(q));
 
-   if (q->n == q->n_max)
-   {
-      reallocate(q); // Resize the vector if it is full
+    Exam *e = q->front->exam;
+    ReportQueueNode *p = q->front;
 
-      // Shift elements to make space for the new element
-      if (q->front != 0)
-      {
-         memmove(
-             &q->v[q->n_max - q->n + q->front], // destination
-             &q->v[q->front],                   // source
-             (q->n - q->front) * sizeof(Report *)  // bytes to shift
-         );
-         q->front = q->n_max - q->n + q->front;
-      }
-   }
-   int rear = (q->front + q->n) % q->n_max;
-   q->v[rear] = v;
-   q->n++;
+    if (q->front != q->rear)
+        q->front = q->front->next;
+    else
+        q->front = q->rear = NULL;
+    free(p);
+    
+    q->n--;
+    return e;
 }
 
-// Function to dequeue an element from the front of the queue
-Report *re_dequeue(ReQueue *q)
-{
-   Report *v = q->v[q->front];
-   q->front = (q->front + 1) % q->n_max;
-   q->n--;
-   return v;
+// Get attributes of an exam
+void req_get_exam_attributes(Exam *e, int *patient_id, int *initialization, Condition *condition) {
+    *patient_id = e->patient_id;
+    *initialization = e->initialization;
+    *condition = e->condition;
 }
 
-// Function to check if the queue is empty
-int re_is_empty(ReQueue *q)
-{
-   return (q->n == 0);
+// Clear old exams from the report queue
+void req_clear(ReportQueue *q, int iteration, int limit, int avg_pathology_time[5], int cont_pathology_exams[5]) {
+    while (q->front != NULL && iteration - q->front->exam->initialization >= limit) {
+        Exam *e = req_dequeue(q);
+        avg_pathology_time[e->condition] += limit;
+        cont_pathology_exams[e->condition]++;
+        free(e);   
+    }
 }
 
-int re_get_patient_id(Report *v) {
-   return v->patient_id;
+// Free memory allocated for the report queue
+void req_free(ReportQueue *q) {
+    ReportQueueNode *p = q->front; 
+    while (p != NULL){
+        ReportQueueNode *t = p->next;
+        free(p->exam);
+        free(p);
+        p = t;
+    }
+    free(q);
 }
 
-void re_free_element(Report *v) {
-   free(v);
+// Print the patient IDs in the report queue
+void req_print(ReportQueue *q) {
+    for (ReportQueueNode *p = q->front; p != NULL; p = p->next)
+       printf("%d ", p->exam->patient_id);
+    printf("\n");
 }
 
-// Function to free the memory allocated for the queue
-void re_free(ReQueue *q)
-{
-   for (int i=0; i < q->n; i++) {
-      re_free_element(re_dequeue(q));
-   }
-   free(q->v); // Free the data vector
-   free(q);    // Free the ADT
-}
-
-void re_print(ReQueue *q)
-{
-   printf("Size: %d\n", q->n);
-   printf("Capacity: %d\n", q->n_max);
-   printf("Front: %d \t Rear: %d\n", q->front, (q->front + q->n) % q->n_max);
-   printf("Data: ");
-   for (int i = 0; i < q->n; i++)
-   {
-      printf("%d ", q->v[(q->front + i) % q->n_max]->patient_id);
-   }
-   printf("\n");
-}
+// Get the name of a condition as a string
+char *get_condition_name(Condition condition) {
+    switch (condition) {
+        case HEALTHY: return "HEALTHY";
+        case BRONCHITIS: return "BRONCHITIS";
+        case PNEUMONIA: return "PNEUMONIA";
+        case FEMUR_FRACTURE: return "FEMUR_FRACTURE";
+        case APPENDICITIS: return "APPENDICITIS";
+        default: return "INVALID";
+    }
+} 

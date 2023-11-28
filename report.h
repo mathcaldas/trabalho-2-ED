@@ -1,11 +1,12 @@
 #ifndef REPORT_H
 #define REPORT_H
 
-typedef struct re_queue ReQueue;
-typedef struct report Report;
+typedef struct report_queue ReportQueue;
+typedef struct report_queue_node ReportQueueNode;
+typedef struct exam Exam;
 
-typedef enum
-{
+// Enumeration of possible medical conditions
+typedef enum {
     HEALTHY,
     BRONCHITIS,
     PNEUMONIA,
@@ -13,28 +14,38 @@ typedef enum
     APPENDICITIS,
 } Condition;
 
-// Function prototypes.
+// Create and Initialize a new report queue
+ReportQueue *req_create();
 
-// Creates a new empty queue and returns a pointer to it
-ReQueue *re_create();
+//Get the length of the report queue
+int req_length(ReportQueue *q);
 
-// Enqueues a float value v into the specified queue q
-void re_enqueue(ReQueue *q, int patient_id, int initialization);
+// Check if the report queue is empty
+int req_is_empty(ReportQueue *q);
 
-// Dequeues and returns a float value from the specified queue q
-Report *re_dequeue(ReQueue *q);
+// Enqueue a new exam into the report queue
+void req_enqueue(ReportQueue *q, int patient_id, int initialization);
 
-// Checks if the specified queue q is empty and returns 1 if true, 0 otherwise
-int re_is_empty(ReQueue *q);
+// Dequeue an exam from the report queue
+Exam *req_dequeue(ReportQueue *q);
 
-int re_get_patient_id(Report *v);
+// Get attributes of an exam
+void req_get_exam_attributes(Exam *e, int *patient_id, int *initialization, Condition *condition);
 
-void re_free_element(Report *v);
+// Clear old exams from the report queue
+void req_clear(ReportQueue *q, int iteration, int limit, int avg_pathology_time[5], int cont_pathology_exams[5]);
 
-// Frees the memory associated with the specified queue q
-void re_free(ReQueue *q);
+// Free memory allocated for the report queue
+void req_free(ReportQueue *q);
 
-// Prints the elements of the specified queue q
-void re_print(ReQueue *q);
+// Print the patient IDs in the report queue
+void req_print(ReportQueue *q);
+
+// Get the name of a condition as a string
+char *get_condition_name(Condition condition);
 
 #endif
+
+
+
+

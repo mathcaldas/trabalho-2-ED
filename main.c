@@ -1,156 +1,190 @@
-#include <stdio.h>
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
 #include "utils.h"
+#include "awaitable.h"
 #include "exam.h"
+#include "patient.h"
 #include "report.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
-typedef struct {
-    int id, age;
-    char name[50], cpf[12];
-} Patient;
+// Constants for configuration
+#define Q_REPORT_TIME_LIMIT 7200
+#define SLEEP_TIME 5
+#define DEVICE_SIZE 5
+#define DEVICE_LOWER_LIMIT 5
+#define DEVICE_UPPER_LIMIT 10
+#define RADIOLOGIST_SIZE 3
+#define RADIOLOGIST_LOWER_LIMIT 10
+#define RADIOLOGIST_UPPER_LIMIT 30
 
-struct awaitable {
-    int patient_id, duration;
-};
-
-typedef struct awaitable Device;
-typedef struct awaitable Radiologist;
-
-// Patient
-
-void gen_patient_name(Patient *p, int length) {
-    char name[length+1];
-    name[0] = gen_randint('A', 'Z');
-    for (int i=1; i < length; i++)
-        name[i] = gen_randint('a', 'z');
-    name[length] = '\0';
-    strcpy(p->name, name);
-}
-
-void gen_patient_cpf(Patient *p) {
-    char cpf[12];
-    for (int i=0; i < 11; i++)
-        cpf[i] = gen_randint('0', '9');
-    cpf[11] = '\0';
-    strcpy(p->cpf, cpf);
-}
-
-Patient *create_patient() {
-    static int id;
-    Patient *p = malloc(sizeof(Patient));
-    if (p == NULL) {
-        printf("No memory.");
-        return NULL;
-    }
-    p->id = id++;
-    p->age = gen_randint(20, 80);
-    gen_patient_name(p, gen_randint(4, 8));
-    gen_patient_cpf(p);
-    return p;
-}
-
-void print_patient(Patient *p) {
-    printf("ID: %d | CPF: %s | Name: %s | Age: %d\n", p->id, p->cpf, p->name, p->age);
-}
-
-// Device
-
-Device *add_device() {
-    Device *d = malloc(sizeof(Device));
-    d->duration = 0;
-    return d;
-}
-
-void use_device(Device *d, int patient_id) {
-    d->patient_id = patient_id;
-    d->duration = gen_randint(5, 10);
-}
-
-int is_device_available(Device *d) {
-    return d->duration == 0;
-}
-
-// Radiologist
-
-Radiologist *add_radiologist() {
-    Radiologist *r = malloc(sizeof(Radiologist));
-    r->duration = 0;
-    return r;
-}
-
-void attend_radiologist(Radiologist *r, int patient_id) {
-    r->patient_id = patient_id;
-    r->duration = gen_randint(10, 30);
-}
-
-int is_radiologist_available(Radiologist *r) {
-    return r->duration == 0;
-}
 
 int main() {
-    ExQueue *q_exam = ex_create();
-    ReQueue *q_report = re_create();
-    Device *devices[5];
-    Radiologist *radiologists[3];
+    // Initialize queues, lists, and awaitables
+    ExamQueue *q_exam = exq_create();
+    ReportQueue *q_report = req_create();
+    LinkedPatientList *lpl = ll_patient_create();
 
-    for (int i = 0; i < 5; i++) {
-        devices[i] = add_device();
-    }
+    Awaitable **device = create_awaitables(DEVICE_SIZE);
+    Awaitable **radiologist = create_awaitables(RADIOLOGIST_SIZE);
+    
+    // Variables for metrics
+    int acc_cont_patient_exams, acc_pathology_time;
+    float exam_time_result = 0;
+    int pathology_exams_time[5] = {0};
+    int cont_pathology_exams[5] = {0};
+    float avg_pathology_time[5] = {0};
 
-    for (int i = 0; i < 3; i++) {
-        radiologists[i] = add_radiologist();
-    }
-
+    // Simulation loop (43200 iterations)
     for (int i = 0; i < 43200; i++) {
+        // Randomly generate patients and enqueue them into the exam queue
         if (gen_randint(0, 100) <= 20){
-            Patient *p = create_patient();
-            if (p == NULL)
-                return -1;
-            ex_enqueue(q_exam, p->id);
+            Patient *p = generate_patient();
+            ll_patient_insert(lpl, p);
+            exq_enqueue(q_exam, get_patient_id(p));
         }
 
-        for (int j = 0; j < 5; j++) {
-            if (!ex_is_empty(q_exam) && is_device_available(devices[j])) {
-                int patient_id = ex_dequeue(q_exam);
-                use_device(devices[j], patient_id);
+        // Process exams using available devices
+        for (int j = 0; j < DEVICE_SIZE; j++) {
+            if (!exq_is_empty(q_exam) && is_awaitable_available(device[j])) {
+                // Dequeue a patient from the exam queue and use the device
+                int patient_id = exq_dequeue(q_exam);
+                use_awaitable(device[j], patient_id, DEVICE_LOWER_LIMIT, DEVICE_UPPER_LIMIT);
                 continue;
             }
-            if (!is_device_available(devices[j]) && --devices[j]->duration == 0) {      
-                re_enqueue(q_report, devices[j]->patient_id, i);
+            else if (!is_awaitable_available(device[j]) && awaitable_duration_decrease(device[j]) == 0) {
+                // If the device is no longer busy, enqueue the patient for report
+                int patient_id = get_awaitable_id(device[j]);
+                
+                req_enqueue(q_report, patient_id, i);
             }
         }
+        // Process exams using available radiologists
+        req_clear(q_report, i, Q_REPORT_TIME_LIMIT, pathology_exams_time, cont_pathology_exams);
+        for (int j = 0; j < RADIOLOGIST_SIZE; j++){
+            if (!req_is_empty(q_report) && is_awaitable_available(radiologist[j])){
+                // Dequeue an exam from the report queue and use the radiologist
+                Condition condition;
+                int patient_id, initialization;
+                Exam *exam = req_dequeue(q_report);
+                req_get_exam_attributes(exam, &patient_id, &initialization, &condition);
+                free(exam);
+                int queue_time = get_qtime_to_exam(i, initialization);
 
-        for (int j = 0; j < 3; j++) {
-            if (!re_is_empty(q_report) && is_radiologist_available(radiologists[j])) {
-                Report *r = re_dequeue(q_report);
-                attend_radiologist(radiologists[j], re_get_patient_id(r));
-                re_free_element(r);
+                pathology_exams_time[condition] += queue_time;
+                cont_pathology_exams[condition]++;
+                use_awaitable(radiologist[j], patient_id, RADIOLOGIST_LOWER_LIMIT, RADIOLOGIST_UPPER_LIMIT);
+
                 continue;
             }
-            if (!is_radiologist_available(radiologists[j])) {
-                radiologists[j]->duration--;
+            else if (!is_awaitable_available(radiologist[j])) {
+                awaitable_duration_decrease(radiologist[j]);
             }
         }
-        if (i % 1000 == 0) {
-            ex_print(q_exam);
-            re_print(q_report);
+        
+        // Display statistics every 10 iterations
+        if (i % 10 == 0) {
+            acc_cont_patient_exams = acc_pathology_time = 0;
+            for (int i=HEALTHY; i <= APPENDICITIS; i++) {
+                acc_pathology_time += pathology_exams_time[i];
+                acc_cont_patient_exams += cont_pathology_exams[i];
+                avg_pathology_time[i] = cont_pathology_exams[i] > 0 ? (float)pathology_exams_time[i]/cont_pathology_exams[i] : 0;
+            }
+            exam_time_result = acc_cont_patient_exams > 0 ? (float)acc_pathology_time/acc_cont_patient_exams : 0;
+            printf("Iter %d: Tempo medio: %.2f\nPor condicao: |", i, exam_time_result);
+            for (int i=HEALTHY; i <= APPENDICITIS; i++)
+                printf(" %s: %.2f |", get_condition_name(i), avg_pathology_time[i]);
             printf("\n");
+            ms_sleep(SLEEP_TIME);
         }
     }
 
-    for (int i = 0; i < 5; i++) {
-        free(devices[i]);
+    // Process remaining data after the simulation ends
+    printf("\nGerenciando filas com dados remanescentes: \n");
+    const int passed_limit_time = req_length(q_report);
+
+    for (int i = 43200; !exq_is_empty(q_exam) || !req_is_empty(q_report) || is_any_awaitable_busy(device, DEVICE_SIZE) || is_any_awaitable_busy(radiologist, RADIOLOGIST_SIZE); i++) {
+        // Randomly generate patients and enqueue them into the exam queue
+        for (int j = 0; j < DEVICE_SIZE; j++) {
+            if (!exq_is_empty(q_exam) && is_awaitable_available(device[j])) {
+                // Dequeue a patient from the exam queue and use the device
+                int patient_id = exq_dequeue(q_exam);
+                use_awaitable(device[j], patient_id, DEVICE_LOWER_LIMIT, DEVICE_UPPER_LIMIT);
+                continue;
+            }
+            else if (!is_awaitable_available(device[j]) && awaitable_duration_decrease(device[j]) == 0) {
+                // If the device is no longer busy, enqueue the patient for report
+                int patient_id = get_awaitable_id(device[j]);
+                
+                req_enqueue(q_report, patient_id, i);
+            }
+        }
+        // Process exams using available radiologists
+        req_clear(q_report, i, Q_REPORT_TIME_LIMIT, pathology_exams_time, cont_pathology_exams);
+        for (int j = 0; j < RADIOLOGIST_SIZE; j++){
+            if (!req_is_empty(q_report) && is_awaitable_available(radiologist[j])){
+                // Dequeue an exam from the report queue and use the radiologist
+                Condition condition;
+                int patient_id, initialization;
+                Exam *exam = req_dequeue(q_report);
+                req_get_exam_attributes(exam, &patient_id, &initialization, &condition);
+                free(exam);
+                int queue_time = get_qtime_to_exam(i, initialization);
+                
+                pathology_exams_time[condition] += queue_time;
+                cont_pathology_exams[condition]++;
+                use_awaitable(radiologist[j], patient_id, RADIOLOGIST_LOWER_LIMIT, RADIOLOGIST_UPPER_LIMIT);
+                
+                continue;
+            }
+            else if (!is_awaitable_available(radiologist[j])) {
+                awaitable_duration_decrease(radiologist[j]);
+            }
+        }
+
+        // Display statistics every 10 iterations
+        if (i % 10 == 0) {
+            acc_cont_patient_exams = acc_pathology_time = 0;
+            for (int i=HEALTHY; i <= APPENDICITIS; i++) {
+                acc_pathology_time += pathology_exams_time[i];
+                acc_cont_patient_exams += cont_pathology_exams[i];
+                avg_pathology_time[i] = cont_pathology_exams[i] > 0 ? (float)pathology_exams_time[i]/cont_pathology_exams[i] : 0;
+            }
+            exam_time_result = acc_cont_patient_exams > 0 ? (float)acc_pathology_time/acc_cont_patient_exams : 0;
+            printf("Iter %d: Tempo medio: %.2f\nPor condicao: |", i, exam_time_result);
+            for (int i=HEALTHY; i <= APPENDICITIS; i++)
+                printf(" %s: %.2f |", get_condition_name(i), avg_pathology_time[i]);
+            printf("\n");
+            ms_sleep(SLEEP_TIME);
+        }
     }
 
-    for (int i = 0; i < 3; i++) {
-        free(radiologists[i]);
+    // Final metrics and cleanup
+    acc_pathology_time = acc_cont_patient_exams = 0;
+    
+    for (int i=HEALTHY; i <= APPENDICITIS; i++) {
+        acc_pathology_time += pathology_exams_time[i];
+        acc_cont_patient_exams += cont_pathology_exams[i];
+        avg_pathology_time[i] = cont_pathology_exams[i] > 0 ? (float)pathology_exams_time[i]/cont_pathology_exams[i] : 0;
     }
+    
+    // Calculate the average exam time result
+    exam_time_result = acc_cont_patient_exams > 0 ? (float)acc_pathology_time/acc_cont_patient_exams : 0;
 
-    ex_print(q_exam);
-    re_print(q_report);
-    ex_free(q_exam);
-    re_free(q_report);
+    printf("\nResultado do tempo medio na fila para laudo: %.2f\n\n", exam_time_result);
+    
+    printf("Resultado do tempo médio por condicao:\n");
+    for (int i=HEALTHY; i <= APPENDICITIS; i++)
+        printf("%s: %.2f\n", get_condition_name(i), avg_pathology_time[i]);
+    printf("\n");
+    printf("Pacientes que ultrapassaram o tempo limite: %d\n", passed_limit_time);
+    printf("\nQUANTIDADE DE PACIENTES NA LISTA: %d\n", ll_patient_size(lpl));
+
+    // Free allocated memory of queues, lists, and awaitables
+    awaitable_free(device, DEVICE_SIZE);
+    awaitable_free(radiologist, RADIOLOGIST_SIZE);
+    ll_patient_free(lpl);
+    exq_free(q_exam);
+    req_free(q_report);
+    
     return 0;
 }

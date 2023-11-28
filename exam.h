@@ -1,26 +1,27 @@
 #ifndef EXAM_H
 #define EXAM_H
 
-typedef struct ex_queue ExQueue;
+typedef struct exam_queue ExamQueue;
+typedef struct exam_queue_node ExamQueueNode;
 
-// Function prototypes.
+ExamQueue *exq_create();
 
-// Creates a new empty queue and returns a pointer to it
-ExQueue *ex_create();
+// Get the length of the exam queue
+int exq_length(ExamQueue *q);
 
-// Enqueues a float value v into the specified queue q
-void ex_enqueue(ExQueue *q, int patient_id);
+// Check if the exam queue is empty
+int exq_is_empty(ExamQueue *q);
 
-// Dequeues and returns a float value from the specified queue q
-int ex_dequeue(ExQueue *q);
+// Enqueue a new exam into the exam queue
+void exq_enqueue(ExamQueue *q, int patient_id);
 
-// Checks if the specified queue q is empty and returns 1 if true, 0 otherwise
-int ex_is_empty(ExQueue *q);
+// Dequeue an exam from the exam queue
+int exq_dequeue(ExamQueue *q);
 
-// Frees the memory associated with the specified queue q
-void ex_free(ExQueue *q);
+// Free memory allocated for the exam queue
+void exq_free(ExamQueue *q);
 
-// Prints the elements of the specified queue q
-void ex_print(ExQueue *q);
+// Print the patient IDs in the exam queue
+void exq_print(ExamQueue *q);
 
 #endif
